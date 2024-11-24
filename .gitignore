@@ -1,0 +1,19 @@
+# Ігнорувати згенеровані файли
+*.exe
+*.obj
+*.pdb
+*.idb
+*.ipch
+*.ilk
+*.log
+*.user
+*.filters
+*.txt
+
+# Ігнорувати Visual Studio файли
+.vs/
+Debug/
+Release/
+
+# Ігнорувати локальні папки збірки
+x64/
