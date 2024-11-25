@@ -27,3 +27,5 @@ void getNameAndPassword(std::string strInfo, std::string& strName, std::string& 
 bool createAccount(std::string strInfo, std::vector<SUser>& vecUsers);
 
 bool loginAccount(std::string strInfo, const std::vector<SUser>& vecUsers);
+
+std::vector<char> searchUsers(std::string strInfo, const std::vector<SUser>& vecUsers);

@@ -54,8 +54,12 @@ DWORD WINAPI handleClient(LPVOID lpParam)
 				vecSendBuf = { 'N' };
 			}
 		}
+		else if (strTypeOfRequest == "ser")
+		{
+			vecSendBuf = searchUsers(strOtherInfo, vecUsers);
+		}
 
-		iSendResult = send(ClientSocket, vecSendBuf.data(), vecRecvBuf.size(), 0);
+		iSendResult = send(ClientSocket, vecSendBuf.data(), vecSendBuf.size(), 0);
 		if (iSendResult == SOCKET_ERROR)
 		{
 			printf("send failed: %d\n", WSAGetLastError());
@@ -143,4 +147,37 @@ bool loginAccount(std::string strInfo, const std::vector<SUser>& vecUsers)
 	}
 
 	return bResult;
+}
+
+std::vector<char> searchUsers(std::string strInfo, const std::vector<SUser>& vecUsers)
+{
+	std::vector<char> vecSendBuf;
+	for (int i = 0; i < vecUsers.size(); i++)
+	{
+		bool bIsFound = true;
+		std::string strName(vecUsers[i].m_strName);
+		for (int j = 0; j < strInfo.length() && j < strName.length(); j++)
+		{
+			if(strInfo[j] != strName[j])
+			{
+				bIsFound = false;
+				break;
+			}
+		}
+		if (bIsFound)
+		{
+			for (int j = 0; j < strName.size(); j++)
+			{
+				vecSendBuf.push_back(strName[j]);
+			}
+			vecSendBuf.push_back(' ');
+		}
+	}
+
+	if (vecSendBuf.empty()) // Якщо нічого не знайдено
+	{
+		vecSendBuf.push_back(' ');
+	}
+
+	return vecSendBuf;
 }

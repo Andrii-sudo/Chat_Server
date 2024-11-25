@@ -105,7 +105,8 @@ int main()
 	do
 	{
 		ClientSocket = accept(ListenSocket, NULL, NULL);
-		if (ClientSocket == INVALID_SOCKET) {
+		if (ClientSocket == INVALID_SOCKET) 
+		{
 			printf("accept failed: %d\n", WSAGetLastError());
 			break;
 		}
