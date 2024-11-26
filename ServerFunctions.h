@@ -4,10 +4,13 @@
 #include <vector>
 #include <windows.h>
 
+#define CHATS_PATH ".\\User chats\\"
+
 struct SUser
 {
 	std::string m_strName;
 	std::string m_strPassword;
+	std::vector<std::string> m_vecUserChats;
 };
 
 struct SHandleParam
@@ -29,3 +32,5 @@ bool createAccount(std::string strInfo, std::vector<SUser>& vecUsers);
 bool loginAccount(std::string strInfo, const std::vector<SUser>& vecUsers);
 
 std::vector<char> searchUsers(std::string strInfo, const std::vector<SUser>& vecUsers);
+
+void sendMessage(std::string strInfo, std::vector<SUser>& vecUsers);

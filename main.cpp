@@ -40,6 +40,18 @@ int main()
 	vecUsers.pop_back();
 	in.close();
 
+	for (int i = 0; i < vecUsers.size(); i++)
+	{
+		std::ifstream inChats(CHATS_PATH + vecUsers[i].m_strName + ".txt");
+		while (!inChats.eof())
+		{
+			std::string strChatName;
+			inChats >> strChatName;
+			vecUsers[i].m_vecUserChats.push_back(strChatName);
+		}
+		vecUsers[i].m_vecUserChats.pop_back();
+	}
+
 	WSADATA wsaData;
 
 	// Initialize Winsock
