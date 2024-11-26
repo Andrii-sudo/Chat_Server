@@ -63,6 +63,10 @@ DWORD WINAPI handleClient(LPVOID lpParam)
 			sendMessage(strOtherInfo, vecUsers);
 			vecSendBuf = { 'Y' };
 		}
+		else if (strTypeOfRequest == "upd")
+		{
+			vecSendBuf = updateChats(strOtherInfo, vecUsers);
+		}
 
 		iSendResult = send(ClientSocket, vecSendBuf.data(), vecSendBuf.size(), 0);
 		if (iSendResult == SOCKET_ERROR)
@@ -135,7 +139,7 @@ bool createAccount(std::string strInfo, std::vector<SUser>& vecUsers)
 	return true;
 }
 
-bool loginAccount(std::string strInfo, const std::vector<SUser>& vecUsers)
+bool loginAccount(std::string strInfo, std::vector<SUser>& vecUsers)
 {
 	std::string strName;
 	std::string strPassword;
@@ -149,6 +153,8 @@ bool loginAccount(std::string strInfo, const std::vector<SUser>& vecUsers)
 			if (strPassword == vecUsers[i].m_strPassword)
 			{
 				bResult = true;
+
+				vecUsers[i].m_isUpToDate = false;
 			}
 			break;
 		}
@@ -229,6 +235,8 @@ void sendMessage(std::string strInfo, std::vector<SUser>& vecUsers)
 	{
 		if (vecUsers[i].m_strName == strSender)
 		{
+			vecUsers[i].m_isUpToDate = false;
+
 			std::vector<std::string>& vecSenderChats(vecUsers[i].m_vecUserChats);
 			if (std::find(vecSenderChats.cbegin(), vecSenderChats.cend(), strReceiver) == vecSenderChats.cend())
 			{
@@ -243,6 +251,8 @@ void sendMessage(std::string strInfo, std::vector<SUser>& vecUsers)
 		}
 		else if (vecUsers[i].m_strName == strReceiver)
 		{
+			vecUsers[i].m_isUpToDate = false;
+
 			std::vector<std::string>& vecReceiverChats(vecUsers[i].m_vecUserChats);
 			if (std::find(vecReceiverChats.cbegin(), vecReceiverChats.cend(), strSender) == vecReceiverChats.cend())
 			{
@@ -261,4 +271,55 @@ void sendMessage(std::string strInfo, std::vector<SUser>& vecUsers)
 			break;
 		}
 	}
+}
+
+std::vector<char> updateChats(std::string strName, std::vector<SUser>& vecUsers) 
+{
+	for (int i = 0; i < vecUsers.size(); i++)
+	{
+		if (vecUsers[i].m_strName == strName)
+		{
+			if (vecUsers[i].m_isUpToDate)
+			{
+				return { ' ' };
+			}
+			else
+			{
+				vecUsers[i].m_isUpToDate = true;
+			}
+			break;
+		}
+	}
+
+	std::vector<char> vecSendBuf;
+
+	std::ifstream in(CHATS_PATH + strName + ".txt");
+	std::string strUserName;
+	while (std::getline(in, strUserName))
+	{
+		for (int i = 0; i < strUserName.length(); i++)
+		{
+			vecSendBuf.push_back(strUserName[i]);
+		}
+		vecSendBuf.push_back('\n');
+
+		std::ifstream inChat(CHATS_PATH + strName + "-" + strUserName + ".txt");
+		std::string strChat;
+		while (std::getline(inChat, strChat))
+		{
+			for (int i = 0; i < strChat.length(); i++)
+			{
+				vecSendBuf.push_back(strChat[i]);
+			}
+			vecSendBuf.push_back('\n');
+		}
+		vecSendBuf.push_back('\n');
+
+		inChat.close();
+	}
+	vecSendBuf.push_back(' ');
+	
+	in.close();
+
+	return vecSendBuf;
 }
