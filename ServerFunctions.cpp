@@ -7,30 +7,19 @@ DWORD WINAPI handleClient(LPVOID lpParam)
 	SOCKET ClientSocket = pParam->m_ClientSocket;
 	std::vector<SUser>& vecUsers = pParam->m_vecUsers;
 
+	// Прийняття запиту від клієнта
 	std::vector<char> vecRecvBuf(1024);
 	int iResult, iSendResult;
 
 	iResult = recv(ClientSocket, vecRecvBuf.data(), vecRecvBuf.size(), 0);
 	if (iResult > 0)
 	{
-		std::string strTypeOfRequest;
-		std::string strOtherInfo;
-		for (int i = 0, isTypeOfRequest = 1; vecRecvBuf[i] != '\0'; i++)
-		{
-			if (isTypeOfRequest == 1 && vecRecvBuf[i] == ' ')
-			{
-				isTypeOfRequest = 0;
-			}
-			else if (isTypeOfRequest)
-			{
-				strTypeOfRequest.push_back(vecRecvBuf[i]);
-			}
-			else
-			{
-				strOtherInfo.push_back(vecRecvBuf[i]);
-			}
-		}
+		// Визначення типу запиту (перші три літери)
+		auto itEnd = std::find(vecRecvBuf.begin(), vecRecvBuf.end(), '\0');		  // \0 є кінцем буферу
+		std::string strTypeOfRequest(vecRecvBuf.begin(), vecRecvBuf.begin() + 3); // Тип запиту  [0, 3)
+		std::string strOtherInfo(vecRecvBuf.begin() + 4, itEnd);				  // Решта даних [4, itEnd)
 
+		// Оброблення запиту
 		std::vector<char> vecSendBuf;
 		if (strTypeOfRequest == "reg")
 		{
@@ -68,6 +57,7 @@ DWORD WINAPI handleClient(LPVOID lpParam)
 			vecSendBuf = updateChats(strOtherInfo, vecUsers);
 		}
 
+		// Відправлення відповіді
 		iSendResult = send(ClientSocket, vecSendBuf.data(), vecSendBuf.size(), 0);
 		if (iSendResult == SOCKET_ERROR)
 		{
@@ -90,21 +80,9 @@ DWORD WINAPI handleClient(LPVOID lpParam)
 
 void getNameAndPassword(std::string strInfo, std::string& strName, std::string& strPassword)
 {
-	for (int i = 0, isName = 1; strInfo[i] != '\0'; i++)
-	{
-		if (strInfo[i] == ' ')
-		{
-			isName = 0;
-		}
-		else if (isName)
-		{
-			strName.push_back(strInfo[i]);
-		}
-		else
-		{
-			strPassword.push_back(strInfo[i]);
-		}
-	}
+	auto itSpace = std::find(strInfo.begin(), strInfo.end(), ' '); 
+	strName.assign(strInfo.begin(), itSpace);		// [0, itSpace)
+	strPassword.assign(itSpace + 1, strInfo.end()); // [itSpace, end)
 }
 
 bool createAccount(std::string strInfo, std::vector<SUser>& vecUsers)
@@ -117,6 +95,7 @@ bool createAccount(std::string strInfo, std::vector<SUser>& vecUsers)
 	userNew.m_strName = strName;
 	userNew.m_strPassword = strPassword;
 
+	// Перевірка чи існує акаунт з таким іменем
 	for (int i = 0; i < vecUsers.size(); i++)
 	{
 		if (vecUsers[i].m_strName == userNew.m_strName)
@@ -178,12 +157,9 @@ std::vector<char> searchUsers(std::string strInfo, const std::vector<SUser>& vec
 				break;
 			}
 		}
-		if (bIsFound)
+		if (bIsFound) // Знайдені імена користувачів записуємо через пробіл
 		{
-			for (int j = 0; j < strName.size(); j++)
-			{
-				vecSendBuf.push_back(strName[j]);
-			}
+			vecSendBuf.insert(vecSendBuf.end(), strName.begin(), strName.end());
 			vecSendBuf.push_back(' ');
 		}
 	}
@@ -207,27 +183,30 @@ void sendMessage(std::string strInfo, std::vector<SUser>& vecUsers)
 		{
 			infoPartNum++;
 		}
-		else if (infoPartNum == 1)
+		else if (infoPartNum == 1) // Весь текст до першого пробілу
 		{
 			strSender.push_back(strInfo[i]);
 		}
-		else if (infoPartNum == 2)
+		else if (infoPartNum == 2) // Текст від першого пробулу до другого
 		{
 			strReceiver.push_back(strInfo[i]);
 		}
-		else if (infoPartNum == 3)
+		else if (infoPartNum == 3) // Текст від другого пробілу до кінця
 		{
 			strMessage.push_back(strInfo[i]);
 		}
 	}
 
+	// У файл відправника додаємо нове повідомлення
 	std::ofstream outSender(CHATS_PATH + strSender + "-" + strReceiver + ".txt", std::ios::app);
 	outSender << strSender << ":" << strMessage << std::endl;
 	outSender.close();
 	
+	// У файл одержувача додаємо нове повідомлення
 	std::ofstream outReceiver(CHATS_PATH + strReceiver + "-" + strSender + ".txt", std::ios::app);
 	outReceiver << strSender << ":" << strMessage << std::endl;
 	outReceiver.close();
+
 
 	bool bSenderFound = false;
 	bool bReceiverFound = false;
@@ -238,6 +217,8 @@ void sendMessage(std::string strInfo, std::vector<SUser>& vecUsers)
 			vecUsers[i].m_isUpToDate = false;
 
 			std::vector<std::string>& vecSenderChats(vecUsers[i].m_vecUserChats);
+
+			// Якщо одержувач ще не в списку чатів відправника, додаємо його
 			if (std::find(vecSenderChats.cbegin(), vecSenderChats.cend(), strReceiver) == vecSenderChats.cend())
 			{
 				vecSenderChats.push_back(strReceiver);
@@ -254,6 +235,8 @@ void sendMessage(std::string strInfo, std::vector<SUser>& vecUsers)
 			vecUsers[i].m_isUpToDate = false;
 
 			std::vector<std::string>& vecReceiverChats(vecUsers[i].m_vecUserChats);
+
+			// Якщо відправник ще не в списку чатів одержувача, додаємо його
 			if (std::find(vecReceiverChats.cbegin(), vecReceiverChats.cend(), strSender) == vecReceiverChats.cend())
 			{
 				vecReceiverChats.push_back(strSender);
@@ -275,6 +258,7 @@ void sendMessage(std::string strInfo, std::vector<SUser>& vecUsers)
 
 std::vector<char> updateChats(std::string strName, std::vector<SUser>& vecUsers) 
 {
+	// Перевірка чи потрібно користувачу обновляти дані
 	for (int i = 0; i < vecUsers.size(); i++)
 	{
 		if (vecUsers[i].m_strName == strName)
@@ -291,26 +275,39 @@ std::vector<char> updateChats(std::string strName, std::vector<SUser>& vecUsers)
 		}
 	}
 
+
+	/*
+	* --------------------------------------
+	* Формат даних в буфері відпралення
+	* <Ім'я співбесідника 1>
+	* <Повідомлення 1>s
+	* ...
+	* <Повідомлення n>
+	* 
+	* <Ім'я співбесідника 2>
+	* ...
+	* <В кінці символ ' '>
+	* --------------------------------------
+	*/
+
 	std::vector<char> vecSendBuf;
 
 	std::ifstream in(CHATS_PATH + strName + ".txt");
 	std::string strUserName;
 	while (std::getline(in, strUserName))
 	{
-		for (int i = 0; i < strUserName.length(); i++)
-		{
-			vecSendBuf.push_back(strUserName[i]);
-		}
+		// Вставляємо ім'я співбесідника в буфер відправлення
+		vecSendBuf.insert(vecSendBuf.end(), strUserName.begin(), strUserName.end());
 		vecSendBuf.push_back('\n');
 
+		// Відкриття файлу з чатом
 		std::ifstream inChat(CHATS_PATH + strName + "-" + strUserName + ".txt");
+
 		std::string strChat;
 		while (std::getline(inChat, strChat))
 		{
-			for (int i = 0; i < strChat.length(); i++)
-			{
-				vecSendBuf.push_back(strChat[i]);
-			}
+			// Вставляємо одне повідомлення в буфер відправлення
+			vecSendBuf.insert(vecSendBuf.end(), strChat.begin(), strChat.end());
 			vecSendBuf.push_back('\n');
 		}
 		vecSendBuf.push_back('\n');

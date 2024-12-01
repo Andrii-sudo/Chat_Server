@@ -5,6 +5,7 @@
 #include <windows.h>
 
 #define CHATS_PATH ".\\User chats\\"
+#define DEFAULT_PORT "12345"
 
 struct SUser
 {
