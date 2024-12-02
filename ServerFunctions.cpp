@@ -1,5 +1,7 @@
 #include "ServerFunctions.h"
 
+HANDLE hMutex;
+
 DWORD WINAPI handleClient(LPVOID lpParam)
 {
 	SHandleParam* pParam = static_cast<SHandleParam*>(lpParam);
@@ -21,6 +23,8 @@ DWORD WINAPI handleClient(LPVOID lpParam)
 
 		// Оброблення запиту
 		std::vector<char> vecSendBuf;
+		
+		WaitForSingleObject(hMutex, INFINITE);  
 		if (strTypeOfRequest == "reg")
 		{
 			if (createAccount(strOtherInfo, vecUsers))
@@ -56,6 +60,7 @@ DWORD WINAPI handleClient(LPVOID lpParam)
 		{
 			vecSendBuf = updateChats(strOtherInfo, vecUsers);
 		}
+		ReleaseMutex(hMutex);
 
 		// Відправлення відповіді
 		iSendResult = send(ClientSocket, vecSendBuf.data(), vecSendBuf.size(), 0);
