@@ -18,6 +18,8 @@
 
 #include "ServerFunctions.h"
 
+extern HANDLE hMutex;
+
 int main()
 {
 #pragma region Зчитування даних користувачів з файлів
@@ -126,6 +128,13 @@ int main()
 		WSACleanup();
 		return 1;
 	}
+
+	hMutex = CreateMutex(NULL, FALSE, NULL);
+	if (hMutex == NULL)
+	{
+		printf("CreateMutex error: %d\n", GetLastError());
+		return 1;
+	}
 #pragma endregion
 
 #pragma region Приймання клієнтських зєднань
@@ -149,6 +158,7 @@ int main()
 
 	closesocket(ClientSocket);
 	WSACleanup();
+	CloseHandle(hMutex);
 
 	return 0;
 }
