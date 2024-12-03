@@ -2,7 +2,7 @@
 
 HANDLE hMutex;
 
-DWORD WINAPI handleClient(LPVOID lpParam)
+DWORD WINAPI handleClientSocket(LPVOID lpParam)
 {
 	SHandleParam* pParam = static_cast<SHandleParam*>(lpParam);
 
@@ -324,4 +324,138 @@ std::vector<char> updateChats(std::string strName, std::vector<SUser>& vecUsers)
 	in.close();
 
 	return vecSendBuf;
+}
+
+DWORD WINAPI hahdleClientPipe(LPVOID lpParam)
+{
+	SHandleParam* pParam = reinterpret_cast<SHandleParam*>(lpParam);
+	HANDLE hPipe = pParam->m_hPipe;
+	std::vector<SUser>& vecUsers = pParam->m_vecUsers;
+
+	std::vector<char> vecRecvBuf(BUF_SIZE);
+	DWORD dwBytesRead, dwBytesWritten;
+
+	while (true)
+	{
+		// Читання з пайпу
+		BOOL bRead = ReadFile(hPipe, vecRecvBuf.data(), vecRecvBuf.size(), &dwBytesRead, NULL);
+		if (bRead && dwBytesRead > 0)
+		{
+			// Визначення типу запиту (перші три літери)
+			auto itEnd = std::find(vecRecvBuf.begin(), vecRecvBuf.end(), '\0'); // \0 є кінцем буфера
+			std::string strTypeOfRequest(vecRecvBuf.begin(), vecRecvBuf.begin() + 3); // Тип запиту [0, 3)
+			std::string strOtherInfo(vecRecvBuf.begin() + 4, itEnd); // Решта даних [4, itEnd)
+
+			// Оброблення запиту
+			std::vector<char> vecSendBuf;
+
+			WaitForSingleObject(hMutex, INFINITE); // Блокування ресурсу
+			if (strTypeOfRequest == "reg")
+			{
+				if (createAccount(strOtherInfo, vecUsers))
+				{
+					vecSendBuf = { 'Y' };
+				}
+				else
+				{
+					vecSendBuf = { 'N' };
+				}
+			}
+			else if (strTypeOfRequest == "log")
+			{
+				if (loginAccount(strOtherInfo, vecUsers))
+				{
+					vecSendBuf = { 'Y' };
+				}
+				else
+				{
+					vecSendBuf = { 'N' };
+				}
+			}
+			else if (strTypeOfRequest == "ser")
+			{
+				vecSendBuf = searchUsers(strOtherInfo, vecUsers);
+			}
+			else if (strTypeOfRequest == "mes")
+			{
+				sendMessage(strOtherInfo, vecUsers);
+				vecSendBuf = { 'Y' };
+			}
+			else if (strTypeOfRequest == "upd")
+			{
+				vecSendBuf = updateChats(strOtherInfo, vecUsers);
+			}
+			ReleaseMutex(hMutex);  // Звільняємо ресурс
+
+			// Відправлення відповіді через пайп
+			BOOL bWrite = WriteFile(hPipe, vecSendBuf.data(), vecSendBuf.size(), &dwBytesWritten, NULL);
+			if (!bWrite)
+			{
+				printf("WriteFile failed: %d\n", GetLastError());
+			}
+		}
+		else if (dwBytesRead == 0)
+		{
+			printf("Client disconnected...\n");
+			break;
+		}
+		else
+		{
+			printf("ReadFile failed: %d\n", GetLastError());
+			break;
+		}
+	}
+
+	// Закриття пайпу після завершення обробки
+	CloseHandle(hPipe);
+	delete pParam; // Видаляємо структуру параметрів
+	return 0;
+}
+
+DWORD WINAPI mainPipe(LPVOID lpParam)
+{
+	// Отримуємо параметри з переданої структури
+	SHandleParam* pParam = reinterpret_cast<SHandleParam*>(lpParam);
+	std::vector<SUser>& vecUsers = pParam->m_vecUsers;
+
+	// Ім'я іменованого пайпа
+	const std::string pipeName = "\\\\.\\pipe\\ServerPipe";
+
+	while (true)
+	{
+		// Створюємо пайп
+		HANDLE hPipe = CreateNamedPipeA(
+			pipeName.c_str(),
+			PIPE_ACCESS_DUPLEX,
+			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
+			PIPE_UNLIMITED_INSTANCES,
+			BUF_SIZE,
+			BUF_SIZE,
+			NMPWAIT_WAIT_FOREVER,
+			NULL);
+
+		if (hPipe == INVALID_HANDLE_VALUE)
+		{
+			printf("CreateNamedPipe failed: %d\n", GetLastError());
+			continue;
+		}
+
+		printf("Waiting for client to connect...\n");
+
+		// Чекаємо на підключення клієнта
+		BOOL bConnect = ConnectNamedPipe(hPipe, NULL) ? TRUE : (GetLastError() == ERROR_PIPE_CONNECTED);
+		if (bConnect)
+		{
+			// Клієнт підключився, створюємо потік для обробки клієнта через пайп
+			SHandleParam* pParam = new SHandleParam(0, hPipe, vecUsers);
+			CreateThread(NULL, 0, hahdleClientPipe, pParam, 0, NULL);
+		}
+		else
+		{
+			CloseHandle(hPipe);  // Закриваємо пайп, якщо підключення не вдалося
+			printf("ConnectNamedPipe failed: %d\n", GetLastError());
+		}
+	}
+
+	return 0;
 }

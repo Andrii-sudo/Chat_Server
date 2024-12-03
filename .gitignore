@@ -9,6 +9,7 @@
 *.user
 *.filters
 *.txt
+*.sln
 
 # Ігнорувати Visual Studio файли
 .vs/
