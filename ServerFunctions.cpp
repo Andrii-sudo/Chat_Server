@@ -326,8 +326,6 @@ std::vector<char> updateChats(std::string strName, std::vector<SUser>& vecUsers)
 	return vecSendBuf;
 }
 
-
-
 DWORD WINAPI hahdleClientPipe(LPVOID lpParam)
 {
 	SHandleParam* pParam = reinterpret_cast<SHandleParam*>(lpParam);
@@ -416,17 +414,17 @@ DWORD WINAPI hahdleClientPipe(LPVOID lpParam)
 
 DWORD WINAPI mainPipe(LPVOID lpParam)
 {
-	std::vector<SUser>& vecUsers = *reinterpret_cast<std::vector<SUser>*>(lpParam);
+	// Отримуємо параметри з переданої структури
+	SHandleParam* pParam = reinterpret_cast<SHandleParam*>(lpParam);
+	std::vector<SUser>& vecUsers = pParam->m_vecUsers;
 
 	// Ім'я іменованого пайпа
 	const std::string pipeName = "\\\\.\\pipe\\ServerPipe";
 
-	// Встановлення пайпа
-	HANDLE hPipe;
 	while (true)
 	{
 		// Створюємо пайп
-		hPipe = CreateNamedPipeA(
+		HANDLE hPipe = CreateNamedPipeA(
 			pipeName.c_str(),
 			PIPE_ACCESS_DUPLEX,
 			PIPE_TYPE_MESSAGE | PIPE_READMODE_MESSAGE | PIPE_WAIT,
