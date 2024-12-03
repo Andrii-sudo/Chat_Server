@@ -157,7 +157,7 @@ int main()
 
 		// Створюємо новий потік для обробки клієнта
 		SHandleParam* pParam = new SHandleParam(ClientSocket, NULL, vecUsers);
-		CreateThread(NULL, 0, handleClient, pParam, 0, NULL);
+		CreateThread(NULL, 0, handleClientSocket, pParam, 0, NULL);
 	} while (true);
 #pragma endregion
 

@@ -2,7 +2,7 @@
 
 HANDLE hMutex;
 
-DWORD WINAPI handleClient(LPVOID lpParam)
+DWORD WINAPI handleClientSocket(LPVOID lpParam)
 {
 	SHandleParam* pParam = static_cast<SHandleParam*>(lpParam);
 

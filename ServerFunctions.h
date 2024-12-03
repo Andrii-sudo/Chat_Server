@@ -29,7 +29,7 @@ struct SHandleParam
 
 };
 
-DWORD WINAPI handleClient(LPVOID lpParam);
+DWORD WINAPI handleClientSocket(LPVOID lpParam);
 
 void getNameAndPassword(std::string strInfo, std::string& strName, std::string& strPassword);
 
