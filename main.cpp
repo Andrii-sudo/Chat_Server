@@ -67,6 +67,11 @@ int main()
 #pragma endregion
 
 #pragma region Ініціалізація сервера
+	// Створення потоку оброблення каналів
+	SHandleParam* pParam = new SHandleParam(0, NULL, vecUsers);
+	CreateThread(NULL, 0, mainPipe, pParam, 0, NULL);
+
+
 	WSADATA wsaData;
 
 	// Ініціаліазація Winsock
@@ -151,8 +156,8 @@ int main()
 		}
 
 		// Створюємо новий потік для обробки клієнта
-		SHandleParam* pParam = new SHandleParam(ClientSocket, vecUsers);
-		CreateThread(NULL, 0, handleClient, pParam, 0, NULL);
+		SHandleParam* pParam = new SHandleParam(ClientSocket, NULL, vecUsers);
+		CreateThread(NULL, 0, handleClientSocket, pParam, 0, NULL);
 	} while (true);
 #pragma endregion
 
